@@ -1,0 +1,2 @@
+attached_assets/fileit-source_1784828437349.zip filter=lfs diff=lfs merge=lfs -text
+.conversation/attached_assets/File-It-vercel-supabase-cleaned_1787677573826.zip filter=lfs diff=lfs merge=lfs -text

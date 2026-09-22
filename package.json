@@ -1,0 +1,27 @@
+{
+  "name": "workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["artifacts/*", "lib/*", "scripts"],
+  "scripts": {
+    "dev": "bash ./dev.sh",
+    "build": "npm run build --workspaces --if-present && mkdir -p dist/server && cp -rf artifacts/fileit/dist/public/* dist/ && cp -rf artifacts/api-server/dist/* dist/server/",
+    "start": "node server.ts",
+    "lint": "tsc --noEmit --skipLibCheck"
+  },
+  "dependencies": {
+    "@types/pg": "^8.23.1",
+    "dotenv": "^18.0.1",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.4.0",
+    "jspdf": "^4.2.1",
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.5",
+    "typescript": "~5.9.3"
+  }
+}

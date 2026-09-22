@@ -1,0 +1,6 @@
+{
+  "name": "Fileit",
+  "description": "Cross-device file sharing, text & code studio with multi-extension export, and zero-leak 3-day dissolving private rooms.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
