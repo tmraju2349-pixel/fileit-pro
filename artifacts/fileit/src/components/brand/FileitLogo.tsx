@@ -157,7 +157,7 @@ export function FileitLogo({
         <div className="flex items-center gap-2">
           <div className="flex items-baseline tracking-wide">
             <span className="font-black tracking-wider text-foreground text-lg sm:text-xl font-mono uppercase">
-              FIL<span className="text-primary font-black">IT</span>
+              FILE<span className="text-primary font-black">IT</span>
             </span>
             <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary ml-1 animate-pulse" />
           </div>

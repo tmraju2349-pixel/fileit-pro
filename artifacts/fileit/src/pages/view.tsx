@@ -19,6 +19,7 @@ import {
   HardDrive,
   FileArchive,
   Layers,
+  Maximize2,
 } from "lucide-react";
 import { FaAndroid, FaApple, FaWindows, FaLinux } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
@@ -31,9 +32,14 @@ import { ArchivePreview } from "@/components/archive-preview";
 import { CodePreview } from "@/components/code-preview";
 import { MediaStudioPreview } from "@/components/media-studio-preview";
 import { ImageStudioPreview } from "@/components/image-studio-preview";
+import { PdfStudioPreview } from "@/components/pdf-studio-preview";
+import { DocxStudioPreview } from "@/components/docx-studio-preview";
+import { XlsxStudioPreview } from "@/components/xlsx-studio-preview";
+import { FullscreenPreviewModal } from "@/components/fullscreen-preview-modal";
 import { useState, useEffect } from "react";
 import { inspectFileType } from "@/lib/file-type-helpers";
 import { ArrowRightLeft } from "lucide-react";
+import { useDynamicBubble } from "@/components/dynamic-bubble-context";
 
 function getViewerType(
   mimeType: string,
@@ -50,7 +56,14 @@ function getViewerType(
   if (meta.category === "sheet") return "xlsx";
   if (meta.category === "video") return "video";
   if (meta.category === "audio") return "audio";
-  if (meta.category === "code" || meta.category === "text") return "text";
+  if (
+    meta.category === "code" ||
+    meta.category === "text" ||
+    fileName.match(/\.(txt|text|log|md|markdown|json|js|jsx|ts|tsx|py|pyw|html|htm|css|scss|sass|less|sql|sh|bash|zsh|bat|cmd|c|cpp|h|hpp|rs|go|java|kt|swift|php|rb|yaml|yml|xml|env|ini|toml|conf|config)$/i) ||
+    mimeType.startsWith("text/")
+  ) {
+    return "text";
+  }
   return "other";
 }
 
@@ -81,10 +94,10 @@ function FilePreview({
       );
     case "pdf":
       return (
-        <iframe
-          src={publicUrl}
-          className="w-full h-[75vh] rounded-2xl border border-border bg-card shadow-xs"
-          title="PDF preview"
+        <PdfStudioPreview
+          url={publicUrl}
+          fileName={fileName}
+          fileSize={size}
         />
       );
     case "video":
@@ -106,9 +119,21 @@ function FilePreview({
     case "text":
       return <CodePreview url={publicUrl} fileName={fileName} />;
     case "docx":
-      return <DocxPreview url={publicUrl} />;
+      return (
+        <DocxStudioPreview
+          url={publicUrl}
+          fileName={fileName}
+          fileSize={size}
+        />
+      );
     case "xlsx":
-      return <XlsxPreview url={publicUrl} />;
+      return (
+        <XlsxStudioPreview
+          url={publicUrl}
+          fileName={fileName}
+          fileSize={size}
+        />
+      );
     case "pptx":
       return <PptxPreview url={publicUrl} fileName={fileName} />;
     case "archive":
@@ -364,9 +389,40 @@ export default function ViewPage() {
   });
 
   const [isInterchangeOpen, setIsInterchangeOpen] = useState(false);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
+  const { addRecentFile, setActivePreviewFile } = useDynamicBubble();
 
   const publicUrl = file ? getFileUrl(file.storagePath) : "";
   const shareUrl = file ? `${window.location.origin}/share/${file.shareToken}` : "";
+
+  useEffect(() => {
+    if (file && publicUrl) {
+      const type = getViewerType(file.mimeType, file.originalName);
+      const minType =
+        type === "pdf"
+          ? "pdf"
+          : type === "docx"
+          ? "docx"
+          : type === "xlsx"
+          ? "xlsx"
+          : type === "image"
+          ? "image"
+          : type === "text"
+          ? "text"
+          : type === "archive"
+          ? "archive"
+          : "other";
+      const payload = {
+        id: file.id,
+        name: file.originalName,
+        type: minType,
+        url: publicUrl,
+        size: file.size,
+      };
+      addRecentFile(payload);
+      setActivePreviewFile(payload);
+    }
+  }, [file?.id, publicUrl]);
   const { data: linkedMessages } = useListTextMessages(file ? { fileId: file.id } : undefined, {
     query: {
       enabled: !!file,
@@ -439,8 +495,18 @@ export default function ViewPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setIsFullscreenOpen(true)}
+              className="font-bold border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary gap-1.5 shadow-xs"
+              title="Open in Fullscreen App Mode"
+            >
+              <Maximize2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Fullscreen</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setIsInterchangeOpen(true)}
-              className="font-bold border-primary/30 hover:bg-primary/10 text-primary gap-1.5"
+              className="font-bold border-border hover:bg-secondary text-foreground gap-1.5 hidden md:inline-flex"
             >
               <ArrowRightLeft className="w-4 h-4" />
               <span>Interchange Format</span>
@@ -482,6 +548,28 @@ export default function ViewPage() {
           </section>
         )}
       </div>
+
+      {/* ── Universal Fullscreen App Studio Modal ── */}
+      {file && (
+        <FullscreenPreviewModal
+          isOpen={isFullscreenOpen}
+          onClose={() => setIsFullscreenOpen(false)}
+          fileName={file.originalName}
+          mimeType={file.mimeType}
+          size={file.size}
+          url={publicUrl}
+        >
+          <div className="w-full h-full flex items-center justify-center p-2">
+            <FilePreview
+              publicUrl={publicUrl}
+              mimeType={file.mimeType}
+              fileName={file.originalName}
+              size={file.size}
+              onDownload={handleDownload}
+            />
+          </div>
+        </FullscreenPreviewModal>
+      )}
 
       {file && (
         <FileInterchangeModal

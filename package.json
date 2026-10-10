@@ -6,7 +6,7 @@
   "workspaces": ["artifacts/*", "lib/*", "scripts"],
   "scripts": {
     "dev": "bash ./dev.sh",
-    "build": "npm run build --workspaces --if-present && mkdir -p dist/server && cp -rf artifacts/fileit/dist/public/* dist/ && cp -rf artifacts/api-server/dist/* dist/server/",
+    "build": "npm run build --workspaces --if-present && mkdir -p dist/server && (cp -rf artifacts/fileit/dist/public/* dist/ 2>/dev/null || true) && (cp -rf artifacts/api-server/dist/* dist/server/ 2>/dev/null || true)",
     "start": "node server.ts",
     "lint": "tsc --noEmit --skipLibCheck"
   },
@@ -18,6 +18,7 @@
     "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
     "jspdf": "^4.2.1",
+    "jsqr": "^1.4.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {

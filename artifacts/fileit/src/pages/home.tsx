@@ -5,7 +5,7 @@ import { useGetFileStats, useListFiles } from "@workspace/api-client-react";
 import { FileCard, FileCardSkeleton } from "@/components/file-card";
 import { formatBytes } from "@/lib/utils";
 import { Link } from "wouter";
-import { HardDrive, Files, Copy, CheckCircle2, Clock } from "lucide-react";
+import { HardDrive, Files, Copy, CheckCircle2, Clock, Zap, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { ChangeExpirationDialog } from "@/components/change-expiration-dialog";
 import {
@@ -94,45 +94,72 @@ export default function Home() {
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="space-y-6"
+          className="space-y-6 pt-2 md:pt-4"
         >
-          <motion.div variants={itemVariants} className="text-center space-y-2">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-foreground">
-              Share files instantly
+          <motion.div variants={itemVariants} className="text-center space-y-3">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground">
+              Instant, Ephemeral <br className="hidden sm:inline" />
+              <span className="bg-gradient-to-r from-primary via-primary/80 to-indigo-500 bg-clip-text text-transparent">
+                File Sharing
+              </span>
             </h1>
-            <p className="text-lg text-muted-foreground">
-              No sign up. No friction. Just drag, drop, and share.
+            <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto leading-relaxed">
+              No registration. No tracking. Drop any payload, set an auto-destruct timer, and distribute with a private link.
             </p>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="max-w-2xl mx-auto mt-8 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-secondary/30 border border-border/60 p-3 rounded-2xl">
-              <span className="text-sm font-semibold text-foreground flex items-center gap-1.5 px-1">
+          {/* Core Feature Strip - Zero Pill Plain Typography */}
+          <motion.div
+            variants={itemVariants}
+            className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground pt-1"
+          >
+            <span className="flex items-center gap-1.5 font-medium text-foreground">
+              <Zap className="w-3.5 h-3.5 text-primary" /> Zero Registration
+            </span>
+            <span aria-hidden="true" className="text-border">·</span>
+            <span className="flex items-center gap-1.5 font-medium text-foreground">
+              <Clock className="w-3.5 h-3.5 text-primary" /> Auto-Dissolving
+            </span>
+            <span aria-hidden="true" className="text-border">·</span>
+            <span className="flex items-center gap-1.5 font-medium text-foreground">
+              <Lock className="w-3.5 h-3.5 text-primary" /> Private Links
+            </span>
+            <span aria-hidden="true" className="text-border">·</span>
+            <span className="flex items-center gap-1.5 font-medium text-foreground">
+              <HardDrive className="w-3.5 h-3.5 text-primary" /> Auto-ZIP Bundling
+            </span>
+          </motion.div>
+
+          {/* Staging & Upload Deck */}
+          <motion.div variants={itemVariants} className="max-w-2xl mx-auto mt-6 space-y-4">
+            {/* Expiration Segmented Control */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-card/60 backdrop-blur-md border border-border/80 p-2.5 rounded-2xl shadow-xs">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 px-2 self-start sm:self-center">
                 <Clock className="w-4 h-4 text-primary shrink-0" />
-                <span>Auto-Dissolve in:</span>
+                <span>Auto-Dissolve:</span>
               </span>
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="grid grid-cols-3 sm:flex items-center gap-1 w-full sm:w-auto">
                 {[
-                  { label: "1 Hour", value: "3600" },
-                  { label: "12 Hours", value: "43200" },
-                  { label: "1 Day", value: "86400" },
-                  { label: "3 Days (Default)", value: "259200" },
-                  { label: "1 Week", value: "604800" },
-                  { label: "Keep Forever", value: "forever" },
+                  { label: "1h", fullLabel: "1 Hour", value: "3600" },
+                  { label: "12h", fullLabel: "12 Hours", value: "43200" },
+                  { label: "1d", fullLabel: "1 Day", value: "86400" },
+                  { label: "3d (Default)", fullLabel: "3 Days", value: "259200" },
+                  { label: "1w", fullLabel: "1 Week", value: "604800" },
+                  { label: "Forever", fullLabel: "Keep Forever", value: "forever" },
                 ].map((opt) => (
-                  <Button
+                  <button
                     key={opt.value}
-                    size="sm"
-                    variant={selectedDuration === opt.value ? "default" : "ghost"}
-                    className={`h-8 text-xs font-semibold rounded-lg px-2.5 ${
+                    type="button"
+                    className={`h-7 sm:h-8 text-xs font-medium rounded-lg px-2 sm:px-2.5 transition-all text-center ${
                       selectedDuration === opt.value
-                        ? "bg-primary text-primary-foreground font-semibold"
-                        : "text-muted-foreground hover:text-foreground"
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                     }`}
                     onClick={() => setSelectedDuration(opt.value)}
+                    title={opt.fullLabel}
                   >
                     {opt.label}
-                  </Button>
+                  </button>
                 ))}
               </div>
             </div>
@@ -145,36 +172,39 @@ export default function Home() {
           </motion.div>
         </motion.section>
 
-        {/* Stats */}
+        {/* Metric Command Deck */}
         <motion.section
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-8"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto pt-2"
         >
           {[
             {
               icon: <Files className="w-5 h-5" />,
-              label: "Files uploaded",
+              label: "Files Shared Through Hub",
               value: statsLoading ? "—" : <AnimatedCount value={stats?.totalFiles ?? 0} />,
+              detail: "Self-prunes upon expiry",
             },
             {
               icon: <HardDrive className="w-5 h-5" />,
-              label: "Storage used",
+              label: "Active Stored Volume",
               value: statsLoading ? "—" : formatBytes(stats?.totalSize ?? 0),
+              detail: "Distributed edge storage",
             },
           ].map((stat) => (
             <motion.div
               key={stat.label}
               variants={itemVariants}
-              className="flex items-center gap-4 p-5 rounded-2xl bg-card border border-border"
+              className="flex items-start gap-4 p-5 rounded-2xl bg-card/60 backdrop-blur-sm border border-border/70 hover:border-border transition-colors shadow-xs"
             >
-              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
                 {stat.icon}
               </div>
-              <div>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-foreground tracking-tight">{stat.value}</p>
+                <p className="text-xs font-medium text-foreground">{stat.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{stat.detail}</p>
               </div>
             </motion.div>
           ))}
@@ -186,20 +216,23 @@ export default function Home() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="space-y-4"
+            className="max-w-2xl mx-auto space-y-3 pt-2"
           >
-            <motion.div variants={itemVariants} className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Recent uploads</h2>
+            <motion.div variants={itemVariants} className="flex items-center justify-between px-1">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span>Recent Uploads</span>
+              </h2>
               <Link
                 href="/files"
-                className="text-sm text-primary hover:underline font-medium"
+                className="text-xs text-primary hover:underline font-semibold flex items-center gap-1"
               >
-                View all
+                Open Hub →
               </Link>
             </motion.div>
             <motion.div variants={itemVariants} className="space-y-2">
               {files.slice(0, 5).map((file) => (
-                <FileCard key={file.id} file={file} showActions={false} />
+                <FileCard key={file.id} file={file} showActions={true} />
               ))}
             </motion.div>
           </motion.section>
@@ -274,9 +307,14 @@ export default function Home() {
               </Button>
             </div>
 
-            <Button variant="secondary" className="w-full" onClick={() => setSharedFile(null)}>
-              Done
-            </Button>
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setSharedFile(null)}>
+                Exit QR Code
+              </Button>
+              <Button variant="secondary" className="flex-1" onClick={() => setSharedFile(null)}>
+                Done
+              </Button>
+            </div>
           </motion.div>
         </DialogContent>
       </Dialog>

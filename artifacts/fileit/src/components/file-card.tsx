@@ -1,4 +1,4 @@
-import { MoreVertical, Copy, Trash2, Download, ExternalLink, Eye, FolderInput, Star, Clock, ArrowRightLeft } from "lucide-react";
+import { MoreVertical, Copy, Trash2, Download, ExternalLink, Eye, FolderInput, Star, Clock, ArrowRightLeft, Minimize2, Columns } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 import { getFileDownloadUrl, getFileUrl } from "@/lib/storage";
 import { formatDistanceToNow } from "date-fns";
@@ -13,6 +13,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatTimeRemaining } from "@/lib/rooms-storage";
 import { inspectFileType } from "@/lib/file-type-helpers";
 import { FileInterchangeModal } from "@/components/file-interchange-modal";
+import { useDynamicBubble } from "@/components/dynamic-bubble-context";
 
 interface FileCardProps {
   file: FileRecord;
@@ -23,6 +24,7 @@ interface FileCardProps {
 }
 
 export function FileCard({ file, onDelete, onMove, showActions = true }: FileCardProps) {
+  const { addMinimizedFile, setSplitScreenFile } = useDynamicBubble();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -30,6 +32,28 @@ export function FileCard({ file, onDelete, onMove, showActions = true }: FileCar
   const [isDragging, setIsDragging] = useState(false);
   const [isInterchangeOpen, setIsInterchangeOpen] = useState(false);
   const fileMeta = inspectFileType(file.originalName, file.mimeType);
+
+  const handleMinimize = () => {
+    addMinimizedFile({
+      id: file.id,
+      name: file.originalName,
+      type: fileMeta.badgeLabel.toLowerCase().includes("pdf") ? "pdf" : fileMeta.badgeLabel.toLowerCase().includes("sheet") ? "xlsx" : fileMeta.badgeLabel.toLowerCase().includes("image") ? "image" : "text",
+      url: getFileDownloadUrl(file.storagePath),
+      size: file.size,
+    });
+    toast({ title: "Minimized to Dynamic Island", description: `${file.originalName} added to dynamic bubble.` });
+  };
+
+  const handleSplitScreen = () => {
+    setSplitScreenFile({
+      id: file.id,
+      name: file.originalName,
+      type: fileMeta.badgeLabel.toLowerCase().includes("pdf") ? "pdf" : fileMeta.badgeLabel.toLowerCase().includes("sheet") ? "xlsx" : fileMeta.badgeLabel.toLowerCase().includes("image") ? "image" : "text",
+      url: getFileDownloadUrl(file.storagePath),
+      size: file.size,
+    });
+    setLocation(`/view/${file.id}`);
+  };
 
   const toggleStar = async () => {
     try {
@@ -53,13 +77,19 @@ export function FileCard({ file, onDelete, onMove, showActions = true }: FileCar
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
+    try {
+      await fetch(`/api/files/${file.id}/download`, { method: "POST" }).catch(() => {});
+      queryClient.invalidateQueries({ queryKey: ["/api/files"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/files/stats"] });
+    } catch {}
     const link = document.createElement("a");
     link.href = getFileDownloadUrl(file.storagePath);
     link.download = file.originalName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast({ title: "Download started", description: `Downloading ${file.originalName}` });
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -102,34 +132,37 @@ export function FileCard({ file, onDelete, onMove, showActions = true }: FileCar
         </motion.div>
         <div className="min-w-0 flex-1 flex flex-col overflow-hidden">
           <div className="flex items-center gap-2 min-w-0">
-            <p className="text-sm font-semibold truncate text-foreground" title={file.originalName}>
+            <p className="text-sm font-semibold truncate text-foreground hover:text-primary transition-colors cursor-pointer" title={file.originalName} onClick={() => setLocation(`/view/${file.id}`)}>
               {file.originalName}
             </p>
-            <span className={`hidden sm:inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded-md border tracking-tight shrink-0 ${fileMeta.badgeColor}`}>
+            <span className="hidden sm:inline text-[10px] font-mono font-medium text-muted-foreground shrink-0">
               {fileMeta.badgeLabel}
             </span>
+            {file.isStarred && (
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
             <span className="shrink-0 font-medium">{formatBytes(file.size)}</span>
-            <span className="hidden sm:inline">&bull;</span>
-            <span className="hidden sm:inline">
+            <span aria-hidden="true">·</span>
+            <span>
               {formatDistanceToNow(new Date(file.createdAt), { addSuffix: true })}
             </span>
             {file.downloadCount !== undefined && (
               <>
-                <span className="hidden sm:inline">&bull;</span>
-                <span className="hidden sm:inline">
+                <span aria-hidden="true">·</span>
+                <span>
                   {file.downloadCount} {file.downloadCount === 1 ? "download" : "downloads"}
                 </span>
               </>
             )}
             {file.expiresAt && !file.isStarred && (
               <>
-                <span className="hidden sm:inline">&bull;</span>
-                <span className={`inline-flex items-center gap-1 font-semibold ${
-                  formatTimeRemaining(file.expiresAt).isUrgent ? "text-amber-500" : "text-muted-foreground"
+                <span aria-hidden="true">·</span>
+                <span className={`inline-flex items-center gap-1 font-medium ${
+                  formatTimeRemaining(file.expiresAt).isUrgent ? "text-amber-500 font-semibold" : "text-muted-foreground"
                 }`}>
-                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <Clock className="w-3 h-3 shrink-0" />
                   {formatTimeRemaining(file.expiresAt).text}
                 </span>
               </>
@@ -139,23 +172,54 @@ export function FileCard({ file, onDelete, onMove, showActions = true }: FileCar
       </div>
 
       {showActions && (
-        <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+        <div className="flex items-center gap-1 md:gap-1.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            title="Copy Share Link"
+            onClick={copyLink}
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
-            className="hidden sm:inline-flex"
+            className="hidden sm:inline-flex h-8 px-2.5 text-xs font-medium"
             onClick={() => setLocation(`/view/${file.id}`)}
+            title="View file"
           >
-            <Eye className="w-4 h-4 mr-2" />
+            <Eye className="w-3.5 h-3.5 mr-1" />
             View
           </Button>
-          <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={handleDownload}>
-            <Download className="w-4 h-4 mr-2" />
-            Download
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden md:inline-flex h-8 px-2.5 text-xs font-medium text-amber-500 border-amber-500/30 hover:bg-amber-500/10"
+            onClick={handleMinimize}
+            title="Minimize to Dynamic Island"
+          >
+            <Minimize2 className="w-3.5 h-3.5 mr-1" />
+            Minimize
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="hidden md:inline-flex h-8 px-2.5 text-xs font-medium text-purple-500 border-purple-500/30 hover:bg-purple-500/10"
+            onClick={handleSplitScreen}
+            title="Open in Split Screen"
+          >
+            <Columns className="w-3.5 h-3.5 mr-1" />
+            Split
+          </Button>
+          <Button variant="outline" size="sm" className="hidden sm:inline-flex h-8 px-2.5 text-xs font-medium" onClick={handleDownload}>
+            <Download className="w-3.5 h-3.5 mr-1.5" />
+            Get
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9 md:h-8 md:w-8">
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -170,6 +234,14 @@ export function FileCard({ file, onDelete, onMove, showActions = true }: FileCar
               <DropdownMenuItem onClick={handleDownload} className="sm:hidden">
                 <Download className="w-4 h-4 mr-2" />
                 Download
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleMinimize} className="text-amber-500 font-medium">
+                <Minimize2 className="w-4 h-4 mr-2" />
+                Minimize to Bubble
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSplitScreen} className="text-purple-500 font-medium">
+                <Columns className="w-4 h-4 mr-2" />
+                Open Split Screen
               </DropdownMenuItem>
               <DropdownMenuItem onClick={copyLink}>
                 <Copy className="w-4 h-4 mr-2" />

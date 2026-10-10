@@ -94,8 +94,8 @@ export function inspectFileType(filename: string, mimeType?: string): FileMetada
     };
   }
 
-  // 3. Executables & Packages (DMG, EXE, DEB, RPM, PKG, MSI, BIN, APPIMAGE)
-  if (["dmg", "pkg", "exe", "msi", "deb", "rpm", "appimage", "bin", "sh", "bat"].includes(ext)) {
+  // 3. Executables & Installers (DMG, EXE, DEB, RPM, PKG, MSI, BIN, APPIMAGE)
+  if (["dmg", "pkg", "exe", "msi", "deb", "rpm", "appimage", "bin"].includes(ext)) {
     let icon = <Box className="w-5 h-5 text-indigo-500" />;
     if (ext === "dmg" || ext === "pkg") icon = <FaApple className="w-5 h-5 text-slate-400" />;
     if (ext === "exe" || ext === "msi") icon = <FaWindows className="w-5 h-5 text-blue-500" />;
@@ -197,39 +197,91 @@ export function inspectFileType(filename: string, mimeType?: string): FileMetada
     };
   }
 
-  // 9. Code & Config
+  // 9. Plain Text, Notes & Documentation
+  if (
+    ["txt", "text", "log", "md", "markdown", "rst", "ini", "toml", "conf", "config", "env", "properties"].includes(ext) ||
+    mime === "text/plain" ||
+    mime === "text/markdown"
+  ) {
+    return {
+      category: "text",
+      extension: ext.toUpperCase() || "TXT",
+      badgeLabel: ext === "md" || ext === "markdown" ? "Markdown (.MD)" : ext ? `Text (.${ext.toUpperCase()})` : "Plain Text",
+      badgeColor: "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
+      icon: <FileText className="w-5 h-5 text-amber-500" />,
+      canPreviewInBrowser: true,
+    };
+  }
+
+  // 10. Code & Development Scripts
   if (
     [
       "js",
       "jsx",
+      "mjs",
+      "cjs",
       "ts",
       "tsx",
       "py",
+      "pyw",
       "html",
+      "htm",
       "css",
+      "scss",
+      "sass",
+      "less",
       "json",
       "sql",
+      "sh",
+      "bash",
+      "zsh",
+      "fish",
+      "bat",
+      "cmd",
+      "ps1",
       "c",
       "cpp",
+      "cc",
+      "cxx",
       "h",
+      "hpp",
+      "cs",
       "rs",
       "go",
       "java",
       "kt",
+      "kts",
       "swift",
+      "dart",
       "php",
       "rb",
+      "lua",
+      "r",
+      "scala",
+      "pl",
+      "perl",
       "yaml",
       "yml",
       "xml",
-      "env",
-      "md",
-    ].includes(ext)
+      "vue",
+      "svelte",
+      "dockerfile",
+      "makefile",
+      "graphql",
+      "gql",
+      "wasm",
+    ].includes(ext) ||
+    mime.startsWith("text/") ||
+    mime.includes("json") ||
+    mime.includes("javascript") ||
+    mime.includes("xml") ||
+    mime.includes("x-sh") ||
+    mime.includes("x-shellscript")
   ) {
     return {
       category: "code",
-      extension: ext.toUpperCase(),
-      badgeLabel: `Code (${ext.toUpperCase()})`,
+      extension: ext.toUpperCase() || "CODE",
+      badgeLabel: `Code (${ext.toUpperCase() || "CODE"})`,
       badgeColor: "bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30",
       icon: <FileCode className="w-5 h-5 text-cyan-500" />,
       canPreviewInBrowser: true,

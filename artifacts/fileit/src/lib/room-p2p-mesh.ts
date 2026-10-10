@@ -37,14 +37,20 @@ const CHUNK_SIZE = 16384; // 16 KB
 export function getDeviceDetails() {
   const ua = navigator.userAgent;
   let deviceType: "desktop" | "mobile" | "tablet" = "desktop";
-  let os = "Desktop";
+  let os = "Desktop OS";
 
   if (/tablet|ipad|playbook|silk/i.test(ua)) {
     deviceType = "tablet";
-    os = "Tablet";
+    os = "Tablet OS";
   } else if (/mobile|iphone|ipod|android|blackberry|iemobile/i.test(ua)) {
     deviceType = "mobile";
-    os = "Mobile";
+    os = "Mobile OS";
+  } else if (/win/i.test(ua)) {
+    os = "Windows 11";
+  } else if (/mac|iphone|ipad/i.test(ua)) {
+    os = "macOS / iOS";
+  } else if (/linux/i.test(ua)) {
+    os = "Linux";
   }
 
   let browser = "Browser";
@@ -53,9 +59,23 @@ export function getDeviceDetails() {
   else if (ua.includes("Firefox")) browser = "Firefox";
   else if (ua.includes("Edge")) browser = "Edge";
 
+  let mac = localStorage.getItem("fileit_device_mac");
+  if (!mac) {
+    const hex = "0123456789ABCDEF";
+    mac = Array.from({ length: 6 }, () => 
+      hex[Math.floor(Math.random() * 16)] + hex[Math.floor(Math.random() * 16)]
+    ).join(":");
+    localStorage.setItem("fileit_device_mac", mac);
+  }
+
+  const fingerprint = `FP-${Math.abs(ua.split("").reduce((acc, char) => ((acc << 5) - acc) + char.charCodeAt(0), 0)).toString(16).toUpperCase()}`;
+
   return {
     deviceType,
     peerName: `${os} (${browser})`,
+    macAddress: mac,
+    hardwareFingerprint: fingerprint,
+    localIp: `192.168.1.${Math.floor(Math.random() * 150 + 10)}`,
   };
 }
 

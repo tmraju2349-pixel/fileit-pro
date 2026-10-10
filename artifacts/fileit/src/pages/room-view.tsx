@@ -40,6 +40,11 @@ import { ArchivePreview } from "@/components/archive-preview";
 import { CodePreview } from "@/components/code-preview";
 import { MediaStudioPreview } from "@/components/media-studio-preview";
 import { ImageStudioPreview } from "@/components/image-studio-preview";
+import { PdfStudioPreview } from "@/components/pdf-studio-preview";
+import { DocxStudioPreview } from "@/components/docx-studio-preview";
+import { XlsxStudioPreview } from "@/components/xlsx-studio-preview";
+import { FullscreenPreviewModal } from "@/components/fullscreen-preview-modal";
+import { Maximize2 } from "lucide-react";
 import { inspectFileType } from "@/lib/file-type-helpers";
 import {
   Dialog,
@@ -113,6 +118,7 @@ export default function RoomViewPage() {
   // Room Modals
   const [showQrModal, setShowQrModal] = useState(false);
   const [previewFile, setPreviewFile] = useState<RoomFile | null>(null);
+  const [isFullscreenPreviewOpen, setIsFullscreenPreviewOpen] = useState(false);
 
   // Edit / Rename File state
   const [editingFile, setEditingFile] = useState<RoomFile | null>(null);
@@ -899,8 +905,8 @@ export default function RoomViewPage() {
                     {meshPeers.filter((p) => p.connected).length + 1} Devices Linked
                   </span>
                   <div className="flex items-center gap-1 text-[11px] text-muted-foreground ml-1">
-                    <span className="px-2 py-0.5 rounded-full bg-background border text-[10px] font-medium flex items-center gap-1">
-                      <Monitor className="w-3 h-3 text-primary" /> You ({getDeviceDetails().peerName})
+                    <span className="px-2 py-0.5 rounded-full bg-background border text-[10px] font-medium flex items-center gap-1" title={`MAC: ${getDeviceDetails().macAddress} • IP: ${getDeviceDetails().localIp} • FP: ${getDeviceDetails().hardwareFingerprint}`}>
+                      <Monitor className="w-3 h-3 text-primary" /> You ({getDeviceDetails().peerName} [MAC: {getDeviceDetails().macAddress}])
                     </span>
                     {meshPeers.map((p) => (
                       <span
@@ -918,8 +924,11 @@ export default function RoomViewPage() {
                   </div>
                 </div>
               ) : (
-                <span className="text-xs text-muted-foreground">
-                  Ready & waiting for 2nd device (Open this room on your phone or laptop)
+                <span className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                  <span>Ready & waiting for 2nd device.</span>
+                  <span className="font-mono text-[10px] bg-background px-2 py-0.5 rounded border text-primary">
+                    Device ID: {getDeviceDetails().hardwareFingerprint} | MAC: {getDeviceDetails().macAddress}
+                  </span>
                 </span>
               )}
             </div>
@@ -1505,17 +1514,26 @@ export default function RoomViewPage() {
               </div>
             </div>
 
-            <Button
-              variant="outline"
-              onClick={() => {
-                navigator.clipboard.writeText(room?.shareToken || "");
-                toast({ title: "Room token copied" });
-              }}
-              className="w-full rounded-xl h-10 text-xs font-semibold gap-1.5"
-            >
-              <Copy className="w-4 h-4" />
-              <span>Copy Pairing Token</span>
-            </Button>
+            <div className="flex gap-2 w-full pt-1">
+              <Button
+                variant="outline"
+                onClick={() => setShowQrModal(false)}
+                className="flex-1 rounded-xl h-10 text-xs font-semibold"
+              >
+                Exit QR Code
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  navigator.clipboard.writeText(room?.shareToken || "");
+                  toast({ title: "Room token copied" });
+                }}
+                className="flex-1 rounded-xl h-10 text-xs font-semibold gap-1.5"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Copy Token</span>
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -1601,6 +1619,47 @@ export default function RoomViewPage() {
                   );
                 }
                 if (
+                  meta.category === "document" &&
+                  (previewFile.originalName.toLowerCase().endsWith(".pdf") || previewFile.mimeType === "application/pdf")
+                ) {
+                  return (
+                    <PdfStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "document" &&
+                  (previewFile.originalName.toLowerCase().endsWith(".docx") || previewFile.originalName.toLowerCase().endsWith(".doc"))
+                ) {
+                  return (
+                    <DocxStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "sheet" ||
+                  previewFile.originalName.toLowerCase().endsWith(".xlsx") ||
+                  previewFile.originalName.toLowerCase().endsWith(".xls") ||
+                  previewFile.originalName.toLowerCase().endsWith(".csv")
+                ) {
+                  return (
+                    <XlsxStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
                   meta.category === "presentation" ||
                   previewFile.originalName.toLowerCase().endsWith(".pptx") ||
                   previewFile.originalName.toLowerCase().endsWith(".ppt")
@@ -1641,21 +1700,161 @@ export default function RoomViewPage() {
               })()}
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl">
-                Close
-              </Button>
-              <a
-                href={`/api/storage/${previewFile?.storagePath}?download=1`}
-                download={previewFile?.originalName}
-                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-border">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsFullscreenPreviewOpen(true)}
+                className="rounded-xl h-10 text-xs font-bold gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
               >
-                <Download className="w-4 h-4" />
-                <span>Download File</span>
-              </a>
+                <Maximize2 className="w-4 h-4" />
+                <span>Fullscreen Studio</span>
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" onClick={() => setPreviewFile(null)} className="rounded-xl h-10 text-xs">
+                  Close
+                </Button>
+                <a
+                  href={`/api/storage/${previewFile?.storagePath}?download=1`}
+                  download={previewFile?.originalName}
+                  className="inline-flex items-center gap-1.5 h-10 px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download File</span>
+                </a>
+              </div>
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* ── ROOM FULLSCREEN PREVIEW STUDIO ── */}
+        {previewFile && (
+          <FullscreenPreviewModal
+            isOpen={isFullscreenPreviewOpen}
+            onClose={() => setIsFullscreenPreviewOpen(false)}
+            fileName={previewFile.originalName}
+            mimeType={previewFile.mimeType}
+            size={previewFile.size}
+            url={`/api/storage/${previewFile.storagePath}`}
+          >
+            <div className="w-full h-full flex items-center justify-center p-2">
+              {(() => {
+                const meta = inspectFileType(previewFile.originalName, previewFile.mimeType);
+                const fileUrl = `/api/storage/${previewFile.storagePath}`;
+
+                if (meta.category === "image") {
+                  return (
+                    <ImageStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      size={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (meta.category === "video") {
+                  return (
+                    <MediaStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      type="video"
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (meta.category === "audio") {
+                  return (
+                    <MediaStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      type="audio"
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "document" &&
+                  (previewFile.originalName.toLowerCase().endsWith(".pdf") || previewFile.mimeType === "application/pdf")
+                ) {
+                  return (
+                    <PdfStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "document" &&
+                  (previewFile.originalName.toLowerCase().endsWith(".docx") || previewFile.originalName.toLowerCase().endsWith(".doc"))
+                ) {
+                  return (
+                    <DocxStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "sheet" ||
+                  previewFile.originalName.toLowerCase().endsWith(".xlsx") ||
+                  previewFile.originalName.toLowerCase().endsWith(".xls") ||
+                  previewFile.originalName.toLowerCase().endsWith(".csv")
+                ) {
+                  return (
+                    <XlsxStudioPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      fileSize={previewFile.size}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (
+                  meta.category === "presentation" ||
+                  previewFile.originalName.toLowerCase().endsWith(".pptx") ||
+                  previewFile.originalName.toLowerCase().endsWith(".ppt")
+                ) {
+                  return (
+                    <PptxPreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (meta.category === "archive" || meta.category === "apk") {
+                  return (
+                    <ArchivePreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                if (meta.category === "code" || meta.category === "text") {
+                  return (
+                    <CodePreview
+                      url={fileUrl}
+                      fileName={previewFile.originalName}
+                      className="w-full border-0"
+                    />
+                  );
+                }
+                return (
+                  <div className="text-center py-10 space-y-2">
+                    <File className="w-12 h-12 text-muted-foreground/50 mx-auto" />
+                    <p className="text-sm font-semibold text-foreground">File ready for download</p>
+                  </div>
+                );
+              })()}
+            </div>
+          </FullscreenPreviewModal>
+        )}
 
         <ChangeExpirationDialog onClose={() => fetchRoomData()} />
       </div>

@@ -39,6 +39,8 @@ app.get(
   [
     "/health",
     "/healthz",
+    "/livez",
+    "/readyz",
     "/api/health",
     "/api/healthz",
     "/_ah/health",
@@ -77,7 +79,7 @@ function getPublicDir(): string | undefined {
 // Serve static directory if available
 app.use((req, res, next) => {
   const publicDir = getPublicDir();
-  if (publicDir && req.method === "GET") {
+  if (publicDir && (req.method === "GET" || req.method === "HEAD")) {
     express.static(publicDir)(req, res, next);
   } else {
     next();
@@ -86,7 +88,7 @@ app.use((req, res, next) => {
 
 // Fallback dynamic SPA handler for client-side routing
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api") || req.method !== "GET") {
+  if (req.path.startsWith("/api") || (req.method !== "GET" && req.method !== "HEAD")) {
     return next();
   }
   const publicDir = getPublicDir();

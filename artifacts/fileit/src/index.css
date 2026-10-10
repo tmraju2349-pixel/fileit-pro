@@ -202,4 +202,16 @@
   .active-elevate:active:not(.no-default-active-elevate)::after {
     background-color: var(--elevate-2);
   }
+
+  /* Modern Ambient Subtle Backdrop */
+  .bg-grid-ambient {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, hsl(var(--border) / 0.3) 1px, transparent 1px),
+      linear-gradient(to bottom, hsl(var(--border) / 0.3) 1px, transparent 1px);
+  }
+
+  .glow-mesh {
+    background: radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.08), transparent 70%);
+  }
 }

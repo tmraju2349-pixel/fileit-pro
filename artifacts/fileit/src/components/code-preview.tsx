@@ -21,16 +21,20 @@ import { inspectFileType } from "@/lib/file-type-helpers";
 
 export function CodePreview({
   url,
+  fileUrl,
+  content: directContent,
   fileName = "code.txt",
   className = "",
 }: {
-  url: string;
+  url?: string;
+  fileUrl?: string;
+  content?: string;
   fileName?: string;
   className?: string;
 }) {
   const { toast } = useToast();
-  const [content, setContent] = useState<string>("");
-  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState<string>(directContent || "");
+  const [loading, setLoading] = useState(!directContent);
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
   const [wordWrap, setWordWrap] = useState(true);
@@ -44,28 +48,42 @@ export function CodePreview({
   const meta = inspectFileType(fileName);
   const isMarkdown = fileName.toLowerCase().endsWith(".md");
   const isJson = fileName.toLowerCase().endsWith(".json");
+  const targetUrl = url || fileUrl;
 
-  useEffect(() => {
-    let cancelled = false;
+  const fetchContent = () => {
+    if (directContent !== undefined) {
+      setContent(directContent);
+      setLoading(false);
+      setError(false);
+      return;
+    }
+
+    if (!targetUrl) {
+      setLoading(false);
+      setError(true);
+      return;
+    }
+
     setLoading(true);
-    fetch(url)
-      .then((r) => r.text())
+    setError(false);
+    fetch(targetUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error("HTTP error " + r.status);
+        return r.text();
+      })
       .then((t) => {
-        if (!cancelled) {
-          setContent(t);
-          setLoading(false);
-        }
+        setContent(t);
+        setLoading(false);
       })
       .catch(() => {
-        if (!cancelled) {
-          setError(true);
-          setLoading(false);
-        }
+        setError(true);
+        setLoading(false);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
+  };
+
+  useEffect(() => {
+    fetchContent();
+  }, [targetUrl, directContent]);
 
   const lines = useMemo(() => content.split("\n"), [content]);
 
@@ -160,8 +178,24 @@ export function CodePreview({
 
   if (error) {
     return (
-      <div className="p-12 bg-card rounded-2xl border border-border text-center text-xs text-muted-foreground">
-        Could not load code preview.
+      <div className="p-8 bg-card rounded-2xl border border-border text-center space-y-3 max-w-md mx-auto">
+        <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mx-auto">
+          <FileCode className="w-5 h-5" />
+        </div>
+        <p className="text-sm font-semibold text-foreground">Could not preview text content</p>
+        <p className="text-xs text-muted-foreground font-mono">The file may still be downloading or encrypting.</p>
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button size="sm" variant="outline" onClick={fetchContent}>
+            Retry Preview
+          </Button>
+          {targetUrl && (
+            <Button size="sm" asChild>
+              <a href={targetUrl} download={fileName}>
+                Download File
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
     );
   }

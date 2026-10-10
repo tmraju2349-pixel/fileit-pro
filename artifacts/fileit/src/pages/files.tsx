@@ -22,8 +22,9 @@ import { TextMessageCard } from "@/components/text-message-card";
 import { Dropzone } from "@/components/dropzone";
 import { useUpload } from "@/hooks/use-upload";
 import { ChangeExpirationDialog } from "@/components/change-expiration-dialog";
+import { GoogleDriveModal } from "@/components/google-drive-modal";
 import { motion, AnimatePresence } from "framer-motion";
-import { Files, Folder, ArrowLeft, Plus, Trash2, FileCode2, Share2, Lock, Clock } from "lucide-react";
+import { Files, Folder, ArrowLeft, Plus, Trash2, FileCode2, Share2, Lock, Clock, Search, LayoutGrid, List, X, Cloud } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -44,6 +45,7 @@ export default function FilesPage() {
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderPassword, setNewFolderPassword] = useState("");
   const [selectedDuration, setSelectedDuration] = useState<string>("259200"); // Default 3 days (in seconds)
   const [newFolderDuration, setNewFolderDuration] = useState<string>("259200"); // Default 3 days (in seconds)
   const [textMessageOpen, setTextMessageOpen] = useState(false);
@@ -53,6 +55,10 @@ export default function FilesPage() {
   const [textFolderId, setTextFolderId] = useState("");
   const [linkedFileId, setLinkedFileId] = useState("");
   const [folderToShare, setFolderToShare] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "documents" | "images" | "media" | "archives" | "code">("all");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  const [googleDriveOpen, setGoogleDriveOpen] = useState(false);
 
   const [, setLocation] = useLocation();
   const [activeRoom, setActiveRoomState] = useState(() => getActiveRoom());
@@ -80,6 +86,31 @@ export default function FilesPage() {
     }
     return list;
   }, [safeFolders, activeRoom]);
+
+  const filteredFiles = useMemo(() => {
+    if (!files || !Array.isArray(files)) return [];
+    return files.filter((f) => {
+      if (searchQuery.trim() && !f.originalName.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      if (typeFilter !== "all") {
+        const name = f.originalName.toLowerCase();
+        const mime = f.mimeType?.toLowerCase() || "";
+        if (typeFilter === "images") {
+          if (!mime.startsWith("image/") && ![".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"].some((ext) => name.endsWith(ext))) return false;
+        } else if (typeFilter === "documents") {
+          if (!mime.includes("pdf") && !mime.includes("document") && !mime.includes("sheet") && !mime.includes("text") && ![".pdf", ".docx", ".doc", ".xlsx", ".xls", ".csv", ".txt", ".md", ".pptx"].some((ext) => name.endsWith(ext))) return false;
+        } else if (typeFilter === "media") {
+          if (!mime.startsWith("video/") && !mime.startsWith("audio/") && ![".mp4", ".mov", ".webm", ".mkv", ".mp3", ".wav", ".ogg", ".m4a", ".flac"].some((ext) => name.endsWith(ext))) return false;
+        } else if (typeFilter === "archives") {
+          if (!mime.includes("zip") && !mime.includes("tar") && !mime.includes("compressed") && ![".zip", ".tar", ".gz", ".7z", ".rar", ".bz2"].some((ext) => name.endsWith(ext))) return false;
+        } else if (typeFilter === "code") {
+          if (![".js", ".ts", ".jsx", ".tsx", ".py", ".html", ".css", ".json", ".sql", ".go", ".rs", ".cpp", ".c", ".java"].some((ext) => name.endsWith(ext))) return false;
+        }
+      }
+      return true;
+    });
+  }, [files, searchQuery, typeFilter]);
 
   const { data: textMessages } = useListTextMessages(
     currentFolderId ? { folderId: currentFolderId } : undefined,
@@ -215,10 +246,12 @@ export default function FilesPage() {
       await createFolder.mutateAsync({ data: { 
         name: newFolderName.trim(),
         expiresAt,
+        password: newFolderPassword.trim() || undefined,
       } });
       queryClient.invalidateQueries({ queryKey: ["/api/folders"] });
-      toast({ title: "Folder created" });
+      toast({ title: newFolderPassword.trim() ? "Locked folder created" : "Folder created" });
       setNewFolderName("");
+      setNewFolderPassword("");
       setNewFolderDuration("259200");
       setCreateFolderOpen(false);
     } catch {
@@ -313,6 +346,10 @@ export default function FilesPage() {
           </div>
 
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setGoogleDriveOpen(true)} className="gap-2">
+              <Cloud className="w-4 h-4 text-primary" />
+              <span className="hidden sm:inline">Google Drive</span>
+            </Button>
             {currentFolder && (
               <Button variant="outline" size="sm" onClick={() => setFolderToShare(currentFolder.id)} className="gap-2">
                 <Share2 className="w-4 h-4" />
@@ -333,34 +370,34 @@ export default function FilesPage() {
         </div>
 
         {/* Dissolve Timer Selector */}
-        <div className="flex flex-wrap items-center justify-between gap-3 bg-secondary/30 border border-border/60 p-3 rounded-2xl">
-          <span className="text-sm font-semibold text-foreground flex items-center gap-1.5 px-1">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 bg-card/60 backdrop-blur-md border border-border/80 p-2.5 rounded-2xl shadow-xs">
+          <span className="text-xs font-semibold text-foreground flex items-center gap-1.5 px-2 self-start sm:self-center">
             <Clock className="w-4 h-4 text-primary shrink-0" />
-            <span>Auto-Dissolve {currentFolderId ? "override" : "in"}:</span>
+            <span>Auto-Dissolve {currentFolderId ? "override" : "timer"}:</span>
           </span>
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="grid grid-cols-3 sm:flex items-center gap-1 w-full sm:w-auto">
             {[
-              ...(currentFolderId ? [{ label: "Folder Timer", value: "folder-default" }] : []),
-              { label: "1 Hour", value: "3600" },
-              { label: "12 Hours", value: "43200" },
-              { label: "1 Day", value: "86400" },
-              { label: "3 Days (Default)", value: "259200" },
-              { label: "1 Week", value: "604800" },
-              { label: "Keep Forever", value: "forever" },
+              ...(currentFolderId ? [{ label: "Inherit", fullLabel: "Folder Timer", value: "folder-default" }] : []),
+              { label: "1h", fullLabel: "1 Hour", value: "3600" },
+              { label: "12h", fullLabel: "12 Hours", value: "43200" },
+              { label: "1d", fullLabel: "1 Day", value: "86400" },
+              { label: "3d", fullLabel: "3 Days", value: "259200" },
+              { label: "1w", fullLabel: "1 Week", value: "604800" },
+              { label: "Forever", fullLabel: "Keep Forever", value: "forever" },
             ].map((opt) => (
-              <Button
+              <button
                 key={opt.value}
-                size="sm"
-                variant={selectedDuration === opt.value ? "default" : "ghost"}
-                className={`h-8 text-xs font-semibold rounded-lg px-2.5 ${
+                type="button"
+                className={`h-7 sm:h-8 text-xs font-medium rounded-lg px-2 sm:px-2.5 transition-all text-center ${
                   selectedDuration === opt.value
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
                 }`}
                 onClick={() => setSelectedDuration(opt.value)}
+                title={opt.fullLabel}
               >
                 {opt.label}
-              </Button>
+              </button>
             ))}
           </div>
         </div>
@@ -371,8 +408,8 @@ export default function FilesPage() {
         {/* Folders (only at root) */}
         {!currentFolderId && displayFolders && displayFolders.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-              Folders
+            <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+              Folders & Rooms
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {displayFolders.map((folder, i) => (
@@ -410,11 +447,94 @@ export default function FilesPage() {
           </section>
         )}
 
-        {/* Files */}
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            {currentFolderId ? "Files in folder" : "All files"}
-          </h2>
+        {/* Files Section with Search, Category Filter, and View Mode Toggle */}
+        <section className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-foreground">
+                {currentFolderId ? `Files in "${currentFolder?.name}"` : "Stored Payloads"}
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                ({filteredFiles.length}{filteredFiles.length !== (files?.length ?? 0) ? ` of ${files?.length ?? 0}` : ""})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* View Switcher */}
+              <div className="flex items-center p-0.5 rounded-lg bg-secondary/60 border border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("list")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "list" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="List view"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`p-1.5 rounded-md transition-all ${
+                    viewMode === "grid" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search & Category Filter Controls */}
+          {Array.isArray(files) && files.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search files..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-8 h-9 text-xs bg-card/60 border-border/80 rounded-xl"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Category Segmented Control */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+                {[
+                  { id: "all", label: "All" },
+                  { id: "documents", label: "Docs" },
+                  { id: "images", label: "Images" },
+                  { id: "media", label: "Media" },
+                  { id: "archives", label: "Archives" },
+                  { id: "code", label: "Code" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setTypeFilter(tab.id as typeof typeFilter)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-all whitespace-nowrap ${
+                      typeFilter === tab.id
+                        ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                        : "text-muted-foreground hover:text-foreground bg-secondary/40 hover:bg-secondary/70 border border-border/40"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <div className="space-y-2">
@@ -427,22 +547,37 @@ export default function FilesPage() {
               <motion.div
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col items-center justify-center py-16 text-center gap-3"
+                className="flex flex-col items-center justify-center py-16 text-center gap-3 bg-card/30 rounded-2xl border border-dashed border-border"
               >
-                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center">
                   <Files className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <p className="text-muted-foreground font-medium">No files here yet</p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-foreground font-semibold">No files here yet</p>
+                <p className="text-xs text-muted-foreground max-w-xs">
                   {currentFolderId
                     ? "Drop a file above to add it to this folder."
-                    : "Upload a file above to get started."}
+                    : "Upload a file above or drop one directly onto this workspace."}
                 </p>
               </motion.div>
             </AnimatePresence>
+          ) : filteredFiles.length === 0 ? (
+            <div className="py-12 text-center text-xs text-muted-foreground bg-card/30 rounded-2xl border border-border">
+              No files matched your search or category filter.
+            </div>
+          ) : viewMode === "grid" ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {filteredFiles.map((file) => (
+                <FileCard
+                  key={file.id}
+                  file={file}
+                  onDelete={setFileToDelete}
+                  onMove={setFileToMove}
+                />
+              ))}
+            </div>
           ) : (
             <div className="space-y-2">
-              {files.map((file) => (
+              {filteredFiles.map((file) => (
                 <FileCard
                   key={file.id}
                   file={file}
@@ -590,6 +725,18 @@ export default function FilesPage() {
                 autoFocus
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="folder-password" className="text-xs font-semibold">Room Password <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input
+                id="folder-password"
+                type="password"
+                placeholder="Lock folder with password"
+                value={newFolderPassword}
+                onChange={(e) => setNewFolderPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateFolder()}
+              />
+            </div>
             
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Auto-Dissolve in</Label>
@@ -706,6 +853,11 @@ export default function FilesPage() {
       </Dialog>
       
       <ChangeExpirationDialog />
+      <GoogleDriveModal
+        open={googleDriveOpen}
+        onOpenChange={setGoogleDriveOpen}
+        onImportFile={(file) => handleFileSelect(file)}
+      />
     </Layout>
   );
 }

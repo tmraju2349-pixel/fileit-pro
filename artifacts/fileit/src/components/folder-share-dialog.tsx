@@ -62,23 +62,24 @@ export function FolderShareDialog({ folder, open, onOpenChange }: FolderShareDia
           </div>
         )}
         <DialogFooter className="gap-2 sm:justify-between">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Done
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Exit QR Code
           </Button>
-          {folder && (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => window.open(shareUrl, "_blank")}>
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Open page
-              </Button>
-              <Button variant="outline" asChild>
-                <a href={`/api/folders/share/${folder.shareToken}/download`}>
-                  <Download className="mr-2 h-4 w-4" />
-                  ZIP
-                </a>
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => window.open(shareUrl, "_blank")}>
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Open page
+            </Button>
+            <Button variant="outline" asChild>
+              <a href={`/api/folders/share/${folder?.shareToken}/download`}>
+                <Download className="mr-2 h-4 w-4" />
+                ZIP
+              </a>
+            </Button>
+            <Button variant="secondary" onClick={() => onOpenChange(false)}>
+              Done
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
