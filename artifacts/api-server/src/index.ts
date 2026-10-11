@@ -23,9 +23,11 @@ const server = app.listen(port, "0.0.0.0", () => {
   cleanupInterval.unref();
 });
 
-server.on("error", (err) => {
-  logger.error({ err }, "Fatal server error while listening");
-  process.exit(1);
+server.on("error", (err: any) => {
+  logger.error({ err }, "Server listen error encountered");
+  if (err?.code === "EADDRINUSE") {
+    logger.warn({ port }, "Port already in use");
+  }
 });
 
 // Handle graceful shutdown signals from Cloud Run / container runner

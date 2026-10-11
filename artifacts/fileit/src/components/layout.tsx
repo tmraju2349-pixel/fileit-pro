@@ -28,9 +28,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     : "Rooms";
 
   return (
-    <DynamicBubbleProvider>
-      <div className="min-h-[100dvh] flex flex-col bg-background relative selection:bg-primary/20">
-        {/* Ambient background mesh glow */}
+    <div className="min-h-[100dvh] flex flex-col bg-background relative selection:bg-primary/20">
+      {/* Ambient background mesh glow */}
         <div className="fixed inset-0 pointer-events-none z-0 glow-mesh opacity-70" />
         <div className="fixed inset-0 pointer-events-none z-0 bg-grid-ambient opacity-30" />
 
@@ -244,6 +243,5 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </nav>
     </div>
-    </DynamicBubbleProvider>
   );
 }
